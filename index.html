@@ -8,7 +8,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+  <!--
+    docx 라이브러리를 ES 모듈(import)로 쓰기 위한 import map.
+    main.js에서 `import * as docx from 'docx'`처럼 이름만 쓰는(bare specifier) import를
+    쓰고 있기 때문에, 이 import map이 반드시 <script type="module" src="main.js"> 보다
+    "앞"에, 그리고 문서 전체에 한 번만 있어야 합니다.
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "docx": "https://esm.run/docx@8.5.0"
+    }
+  }
+  </script>
 </head>
 <body>
   <div class="app-container">
