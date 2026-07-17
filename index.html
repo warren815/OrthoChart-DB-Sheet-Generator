@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrthoChart DB Sheet Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar for Settings and Metadata -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">🦷</div>
+        <h2>OrthoChart DB</h2>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>🔑 Gemini API 설정</h3>
+        <div class="input-group">
+          <label for="api-key">Gemini API Key</label>
+          <input type="password" id="api-key" placeholder="AIZA... 입력" />
+          <div class="checkbox-group">
+            <input type="checkbox" id="save-key" checked>
+            <label for="save-key">브라우저에 안전하게 저장</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>👤 환자 기본 정보</h3>
+        <p class="section-desc">AI 분석 시 자동으로 채워지며, 직접 수정도 가능합니다.</p>
+        <div class="input-group">
+          <label for="patient-name">환자 이름</label>
+          <input type="text" id="patient-name" placeholder="예: 이수아">
+        </div>
+        <div class="input-group">
+          <label for="patient-id">환자 번호 (ID)</label>
+          <input type="text" id="patient-id" placeholder="예: 1219345">
+        </div>
+        <div class="input-group">
+          <label for="patient-seq">일련 번호 (Seq)</label>
+          <input type="text" id="patient-seq" placeholder="예: 23-89">
+        </div>
+        <div class="input-group">
+          <label for="debonding-date">Debonding 날짜</label>
+          <input type="text" id="debonding-date" placeholder="예: 2026. 3. 12">
+        </div>
+      </div>
+      
+      <div class="sidebar-footer">
+        <p>v1.0.0 | OrthoChart Extractor</p>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Input Panel -->
+      <section class="panel input-panel">
+        <div class="panel-header">
+          <h2>1. 데이터 입력</h2>
+          <p class="panel-subtitle">차트 캡처 이미지와 복사한 텍스트를 등록하세요.</p>
+        </div>
+
+        <div class="panel-body">
+          <!-- Image Upload Area -->
+          <div class="form-group">
+            <label>📸 차트 캡처본 업로드 (날짜 확인용)</label>
+            <input type="file" id="image-input" multiple accept="image/*" style="display:none">
+            <label for="image-input" class="upload-zone" id="upload-zone">
+              <div class="upload-prompt">
+                <span class="upload-icon">📁</span>
+                <p>클릭하여 이미지를 업로드하거나 여기로 드래그하세요.</p>
+                <span class="upload-note">여러 이미지 동시 선택 가능 (날짜 오름차순 권장)</span>
+              </div>
+            </label>
+            <!-- Image Previews -->
+            <div class="preview-grid" id="preview-grid"></div>
+          </div>
+
+          <!-- Text Input Area -->
+          <div class="form-group flex-grow">
+            <label for="chart-text">✍️ 복사한 차트 텍스트 (순서대로 정렬됨)</label>
+            <textarea id="chart-text" placeholder="여기에 EMR에서 복사한 차트 텍스트 전체를 붙여넣으세요..."></textarea>
+          </div>
+
+          <!-- Action Button -->
+          <button id="btn-generate" class="btn btn-primary">
+            <span class="btn-text">✨ DB sheet 분석 및 생성</span>
+            <span class="loader hidden"></span>
+          </button>
+          
+          <!-- Progress Log -->
+          <div id="progress-log" class="progress-log hidden">
+            <div class="progress-spinner"></div>
+            <span id="progress-text">분석을 준비하고 있습니다...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Output Panel -->
+      <section class="panel output-panel">
+        <div class="panel-header">
+          <h2>2. DB Sheet 프리뷰 및 다운로드</h2>
+          <p class="panel-subtitle">추출된 내용을 확인하고 워드 파일로 내려받으세요.</p>
+        </div>
+
+        <div class="panel-body">
+          <!-- Preview Tabs -->
+          <div class="tab-header">
+            <button class="tab-btn active" data-tab="preview-tab">문서 미리보기</button>
+            <button class="tab-btn" data-tab="json-tab">Raw JSON</button>
+          </div>
+
+          <!-- Tab Content -->
+          <div class="tab-content-container">
+            <!-- Preview Tab -->
+            <div class="tab-content active" id="preview-tab">
+              <div class="empty-state" id="preview-empty">
+                <span class="empty-icon">📝</span>
+                <p>입력 데이터를 작성하고 분석 버튼을 누르면 여기에 워드 파일에 들어갈 표 양식이 표시됩니다.</p>
+              </div>
+              
+              <!-- Document Preview Container -->
+              <div class="doc-preview hidden" id="doc-preview-container">
+                <div class="doc-header">
+                  <div class="doc-header-date" id="prev-header-date">2026. 3. 12</div>
+                  <div class="doc-header-title">
+                    <span id="prev-header-seq">23-89</span>
+                    <span id="prev-header-name">이수아</span>
+                    <span>Debonding sheet</span>
+                    <span class="symbol-phi">∅</span>
+                    <span id="prev-header-id">1219345</span>
+                  </div>
+                </div>
+                
+                <!-- 2-column or list view of table -->
+                <div class="doc-body">
+                  <table class="db-sheet-table" id="db-sheet-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 15%">날짜</th>
+                        <th style="width: 85%">진료 내용 및 경과 기록</th>
+                      </tr>
+                    </thead>
+                    <tbody id="db-sheet-table-body">
+                      <!-- Rendered rows will go here -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Raw JSON Tab -->
+            <div class="tab-content" id="json-tab">
+              <textarea id="json-output" readonly placeholder="분석이 완료되면 구조화된 JSON 데이터가 여기에 나타납니다."></textarea>
+            </div>
+          </div>
+
+          <!-- Download Action -->
+          <button id="btn-download" class="btn btn-success" disabled>
+            <span>💾 Word 파일(.docx) 다운로드</span>
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
