@@ -940,16 +940,16 @@ btnDownload.addEventListener('click', async () => {
           },
           children: [
             new docx.Paragraph({
-              alignment: docx.AlignmentType.RIGHT,
-              children: [new docx.TextRun({ text: debondDate, size: 22, font: 'NanumGothic' })],
+              alignment: docx.AlignmentType.LEFT,
+              children: [new docx.TextRun({ text: `DB date: ${debondDate}`, size: 22, font: 'NanumGothic' })],
               spacing: { after: 120 }
             }),
             new docx.Paragraph({
               alignment: docx.AlignmentType.CENTER,
               children: [
-                new docx.TextRun({ text: `${seq}  ${name}  Debonding sheet  `, bold: true, size: 28, font: 'NanumGothic' }),
-                new docx.TextRun({ text: '∅', bold: false, size: 28, font: 'Cambria' }),
-                new docx.TextRun({ text: `  ${id}`, bold: true, size: 28, font: 'NanumGothic' })
+                new docx.TextRun({ text: `${seq}  ${id}  ${name}`, bold: true, size: 28, font: 'NanumGothic' }),
+                new docx.TextRun({ break: 1 }),
+                new docx.TextRun({ text: 'Debonding sheet', bold: true, size: 28, font: 'NanumGothic' }),
               ],
               spacing: { after: 400 }
             }),
@@ -978,8 +978,22 @@ function createDocxTable(timeline, docx) {
     // 헤더 행은 그대로 유지
     new docx.TableRow({
       children: [
-        new docx.TableCell({ children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "날짜", bold: true })] })] }),
-        new docx.TableCell({ children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "진료 내용", bold: true })] })] })
+        new docx.TableCell({
+          children: [
+            new docx.Paragraph({
+              alignment: docx.AlignmentType.CENTER,
+              children: [new docx.TextRun({ text: "날짜", bold: true })]
+            })
+          ]
+        }),
+        new docx.TableCell({
+          children: [
+            new docx.Paragraph({
+              alignment: docx.AlignmentType.CENTER,
+              children: [new docx.TextRun({ text: "진료 내용", bold: true })]
+            })
+          ]
+        })
       ]
     })
   ];
