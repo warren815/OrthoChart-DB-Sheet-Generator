@@ -43,6 +43,40 @@ const prevHeaderId = document.getElementById('prev-header-id');
 const dbSheetTableBody = document.getElementById('db-sheet-table-body');
 const jsonOutput = document.getElementById('json-output');
 
+// [추가할 코드] 비동기 대기(Delay) 함수
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// [추가할 코드] 지수 백오프가 적용된 API 호출 래퍼 함수
+async function generateContentWithRetry(model, promptData, maxRetries = 3) {
+  let delay = 2000; // 초기 대기 시간 (2초)
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // API 정상 호출 시도
+      const result = await model.generateContent(promptData);
+      return result; // 성공하면 즉시 결과 반환
+
+    } catch (error) {
+      const isOverloaded = error.message.includes('503') || error.message.includes('429');
+
+      // 503/429 에러가 아니거나, 최대 시도 횟수를 채웠다면 즉시 에러 발생 (루프 종료)
+      if (!isOverloaded || attempt === maxRetries) {
+        throw error;
+      }
+
+      // UX 업데이트: 사용자에게 재시도 중임을 알림
+      console.warn(`[Gemini API] 서버 과부하 감지. ${delay / 1000}초 후 재시도합니다. (시도: ${attempt}/${maxRetries})`);
+      if (progressText) {
+        progressText.innerText = `서버 과부하로 인해 일시 대기 후 재시도합니다 (${attempt}/${maxRetries}회)...`;
+      }
+
+      // 지정된 시간만큼 대기 후 다음 루프(재시도)로 이동
+      await sleep(delay);
+      delay *= 2; // 대기 시간 2배 증가 (2초 -> 4초 -> 8초)
+    }
+  }
+}
+
 // =====================================================================================
 // 치식 필드 정규화 — 2/4/6개가 아닌 예외적인 pipe 개수에 대한 안전장치
 //
@@ -448,7 +482,11 @@ btnExtractDates.addEventListener('click', async () => {
 }
     `;
 
-    const result = await model.generateContent([datePrompt, ...imageParts]);
+    // 기존 코드:
+    // const result = await model.generateContent([datePrompt, ...imageParts]);
+
+    // 수정할 코드:
+    const result = await generateContentWithRetry(model, [datePrompt, ...imageParts]);
     let responseText = result.response.text().trim();
 
     if (responseText.startsWith('```json')) {
@@ -581,7 +619,11 @@ ${chartText}
 }
     `;
 
-    const result = await model.generateContent([prompt]);
+    // 기존 코드:
+    // const result = await model.generateContent([prompt]);
+
+    // 수정할 코드:
+    const result = await generateContentWithRetry(model, [prompt]);
     let responseText = result.response.text().trim();
 
     if (responseText.startsWith('```json')) {
