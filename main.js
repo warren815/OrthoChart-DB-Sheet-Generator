@@ -363,7 +363,11 @@ btnGenerate.addEventListener('click', async () => {
       이는 차트를 작성/서명한 시각이며, 실제 진료일과 다를 수 있습니다(당일이 아니라 며칠 후 몰아서 기록하는 경우 포함).
       이 값은 날짜 추출에 절대 사용하지 마세요.
 - 강조 헤더 바는 한 페이지(또는 한 컬럼) 안에 여러 개가 순서대로 나타나며, 각 헤더 바부터 다음 헤더 바 직전까지가 하나의 진료 블록에 대응하는 날짜입니다.
+- ★주의(혼동 주의 지점): 어떤 블록의 "서명 타임스탬프"(B, 사용 금지 대상)는 그 블록의 맨 아래, 즉 "다음 블록의 헤더 바" 바로 위에 붙어서 나타납니다. 시각적으로 서로 가까이 붙어있다고 해서 그 서명 타임스탬프를 아래쪽(다음) 블록의 날짜로 착각하면 안 됩니다. 그 서명 타임스탬프는 항상 위쪽(이전) 블록에 속합니다.
 - 텍스트 블록은 이미 날짜 오름차순으로 정렬되어 있으므로, 이미지에서 인식한 헤더 바 날짜들도 오름차순으로 정렬한 뒤, (2)에서 나눈 텍스트 블록 순서와 1:1로 매핑하세요.
+- ★자가 검증(필수): 최종 결과를 만들기 전에 timeline의 날짜가 위에서 아래로 갈수록 항상 "이전 날짜와 같거나 이후"인지 확인하세요.
+  - 만약 같은 날짜가 연속으로 2번 이상 나온다면(당일 여러 건 처리 같은 명백한 예외가 아니라면), 둘 중 하나는 실제로는 다른 날짜인데 헤더를 잘못 읽었을 가능성이 매우 높습니다 — 반드시 이미지를 다시 확인해 정확한 헤더 날짜를 다시 읽으세요.
+  - 만약 날짜가 거꾸로(이전 날짜보다 작은 값으로) 간다면, 이후 모든 블록의 날짜가 한 칸씩 밀렸을 가능성이 높습니다 — 처음부터 헤더 바 개수와 텍스트 블록 개수가 정확히 일치하는지 다시 세어보고 매핑을 다시 하세요.
 - 만약 어떤 블록의 날짜를 이미지에서 명확히 읽을 수 없다면, 임의로 서명 시각이나 다른 값을 대신 사용하지 말고 빈 값("")으로 남겨두세요.
 
 [2] 기록 형식 — 반드시 아래 형식을 따르세요:
@@ -438,6 +442,70 @@ ${chartText}
   }
 });
 
+// =====================================================================================
+// 날짜 이상 감지 — AI의 이미지 판독(OCR) 특성상 가끔 헤더 날짜를 잘못 읽어
+// 같은 날짜가 연속 중복되거나, 이후 모든 행이 한 칸씩 밀리는 경우가 있습니다.
+// 완벽한 자동 교정은 불가능하지만, "여기 확인해보세요"라고 짚어주는 용도로
+// 텍스트 블록이 날짜 오름차순이라는 전제를 활용해 의심 지점을 표시합니다.
+// =====================================================================================
+function parseKoreanDate(str) {
+  if (!str) return null;
+  const m = String(str).match(/(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})/);
+  if (!m) return null;
+  const year = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return new Date(year, month - 1, day);
+}
+
+function findDateAnomalies(timeline) {
+  const anomalies = [];
+  let prevDate = null;
+  let prevIndex = -1;
+
+  timeline.forEach((row, idx) => {
+    const d = parseKoreanDate(row.date);
+    if (!d) return; // 날짜 형식을 못 읽으면 검사 대상에서 제외
+
+    if (prevDate) {
+      if (d.getTime() < prevDate.getTime()) {
+        anomalies.push({ index: idx, date: row.date, type: 'decrease' });
+      } else if (d.getTime() === prevDate.getTime()) {
+        anomalies.push({ index: idx, date: row.date, type: 'duplicate' });
+      }
+    }
+    prevDate = d;
+    prevIndex = idx;
+  });
+
+  return anomalies;
+}
+
+function renderDateAnomalyBanner(anomalies) {
+  let banner = document.getElementById('date-anomaly-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'date-anomaly-banner';
+    banner.style.cssText = 'margin-bottom:12px; padding:10px 14px; border-radius:6px; font-size:13px; line-height:1.6; border:1px solid transparent;';
+    docPreviewContainer.insertBefore(banner, docPreviewContainer.firstChild);
+  }
+
+  if (anomalies.length === 0) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  banner.style.display = 'block';
+  banner.style.background = '#fdecea';
+  banner.style.color = '#c0392b';
+  banner.style.borderColor = '#f5c2c0';
+
+  const list = anomalies
+    .map(a => `${a.index + 1}번째 행 (${a.date}${a.type === 'decrease' ? ' — 이전 행보다 날짜가 앞섬' : ' — 이전 행과 날짜 중복'})`)
+    .join(', ');
+
+  banner.innerText = `⚠️ 날짜 순서가 의심되는 행이 ${anomalies.length}곳 있습니다: ${list}. 원본 캡처본과 대조해서 확인해주세요.`;
+}
+
 // Render the preview table and header
 function renderPreview() {
   if (!extractedData || !Array.isArray(extractedData.timeline)) {
@@ -449,12 +517,21 @@ function renderPreview() {
   updatePreviewHeader();
   dbSheetTableBody.innerHTML = '';
 
-  extractedData.timeline.forEach(row => {
+  const anomalies = findDateAnomalies(extractedData.timeline);
+  const anomalyIndexSet = new Set(anomalies.map(a => a.index));
+
+  extractedData.timeline.forEach((row, idx) => {
     const tr = document.createElement('tr');
 
     const tdDate = document.createElement('td');
     tdDate.style.fontWeight = '600';
     tdDate.innerText = row.date;
+
+    if (anomalyIndexSet.has(idx)) {
+      tdDate.style.color = '#c0392b';
+      tdDate.style.textDecoration = 'underline wavy #c0392b';
+      tdDate.title = '⚠️ 이전 행과 날짜 순서가 이상합니다. 원본 이미지를 다시 확인해주세요.';
+    }
 
     const tdContent = document.createElement('td');
 
@@ -466,6 +543,8 @@ function renderPreview() {
     tr.appendChild(tdContent);
     dbSheetTableBody.appendChild(tr);
   });
+
+  renderDateAnomalyBanner(anomalies);
 
   previewEmpty.classList.add('hidden');
   docPreviewContainer.classList.remove('hidden');
