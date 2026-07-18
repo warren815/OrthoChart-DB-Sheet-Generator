@@ -607,13 +607,7 @@ ${chartText}
 - 진단명 반복 제거.
 - 예진자/주치의 등 행정 정보 제거.
 - 치료 및 경과에서 Record taking 내용 제거. (A-record taking (initial)은 놔두기)
-- 첫 방문이나 교정 시작 전의 현병력에서는 줄이지 말고 아래의 형태 유지.
- * Pathology : 
- [1] Anterior-Posterior relationship
- [2] Vertical discrepancy
- [3] Alignment and Symmetry
- [4] Dental Protrusion and Facial esthetics
-
+- 첫 방문이나 교정 시작 전의 현병력의 [Problem list]는 줄이지 말고 차트 텍스트 그대로 유지.
 - ★핵심 지시사항: 텍스트에 포함된 치식 기호(예: {치식:7|||})는 절대 풀어서 쓰거나 변환하지 말고, 기호와 중괄호를 포함해 원본 형태 그대로 출력하세요.
 - 교정 약어 유지(NT, SS, TMA, PC, fig, el, bkt, del, imp, r/v 등)
 - Elastic: "El. {치식:7|7|4|4} 3/16 med." 형식.
