@@ -606,9 +606,17 @@ ${chartText}
 - 줄글 금지. 항목 당 짧은 키워드/구절 위주로 작성.
 - 진단명 반복 제거.
 - 예진자/주치의 등 행정 정보 제거.
+- 치료 및 경과에서 Record taking 내용 제거. (A-record taking (initial)은 놔두기)
+- 첫 방문이나 교정 시작 전의 현병력에서는 줄이지 말고 아래의 형태 유지.
+ * Pathology : 
+ [1] Anterior-Posterior relationship
+ [2] Vertical discrepancy
+ [3] Alignment and Symmetry
+ [4] Dental Protrusion and Facial esthetics
+
 - ★핵심 지시사항: 텍스트에 포함된 치식 기호(예: {치식:7|||})는 절대 풀어서 쓰거나 변환하지 말고, 기호와 중괄호를 포함해 원본 형태 그대로 출력하세요.
-- 교정 약어 유지(NT, SS, TMA, PC, fig, el, bkt, del 등)
-- Elastic: "El. 3/16 med. ({치식:7|7|4|4})" 형식.
+- 교정 약어 유지(NT, SS, TMA, PC, fig, el, bkt, del, imp, r/v 등)
+- Elastic: "El. {치식:7|7|4|4} 3/16 med." 형식.
 
 ■ 출력 JSON 형식(순수 JSON만 반환, 다른 설명/코드블록 금지) — 날짜 필드 없이, 방문 순서대로 나열한 배열:
 {
